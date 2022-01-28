@@ -1,0 +1,71 @@
+
+function getRXVersionInfo() {
+    let rxApp = sf.ui.izotope;
+    let rxVersion = rxApp.activeBundleID.slice(-1);
+    let rxAppFooter = rxApp.mainWindow.groups.whoseDescription.is(`RX${rxVersion} Main Window`).first.groups.whoseDescription.is('App Footer').first;
+    let editorSelectionPanel = rxAppFooter.groups.whoseDescription.is('Editor Selection Panel').first;
+
+    return { rxApp, editorSelectionPanel }
+}
+
+
+function ensureSpectrogramSettingsWindowIsOpen() {
+    let { rxApp } = getRXVersionInfo();
+    let win = rxApp.windows.whoseTitle.is('Spectrogram Settings').first;
+    if (!win.exists) {
+        rxApp.menuClick({
+            menuPath: ['View', 'Spectrogram Settings']
+        });
+        win.elementWaitFor();
+    }
+}
+
+
+/**
+* @param {string} name
+*/
+function selectView(name) {
+    
+    let { rxApp } = getRXVersionInfo();
+    let btn = rxApp.windows.whoseTitle.is('Spectrogram Settings').first.groups.whoseDescription.is('SpectrogramSettingsPanel').first.popupButtons.whoseTitle.is('Frequency scale').first;
+
+    if (btn.value.invalidate().value == 'name') return;
+    btn.elementClick();
+    sf.keyboard.press({ keys: 'enter' });
+    
+    while (true) {
+        sf.engine.checkForCancellation();
+        if (btn.value.invalidate().value == name) break;
+        sf.keyboard.press({ keys: 'down' });
+    }
+}
+
+
+function main() {
+
+    let { rxApp } = getRXVersionInfo();
+    rxApp.appActivateMainWindow();
+
+    ensureSpectrogramSettingsWindowIsOpen();
+
+    //Toggle between Mel & Log
+    var btn = rxApp.windows.whoseTitle.is('Spectrogram Settings').first.groups.whoseDescription.is('SpectrogramSettingsPanel').first.popupButtons.whoseTitle.is('Frequency scale').first;
+    if (btn.value.value == "Mel") {
+        selectView("Log");
+
+        rxApp.windows.whoseTitle.is('Spectrogram Settings').first.groups.whoseDescription.is('SpectrogramSettingsPanel').first.buttons.whoseDescription.is('Reassignment CheckBox').first.checkboxSet({
+            targetValue: "Enable",
+        });
+
+    } else {
+        rxApp.windows.whoseTitle.is('Spectrogram Settings').first.groups.whoseDescription.is('SpectrogramSettingsPanel').first.buttons.whoseDescription.is('Reassignment CheckBox').first.checkboxSet({
+            targetValue: "Disable",
+        });
+        selectView("Mel");
+    };
+
+    rxApp.windows.whoseTitle.is('Spectrogram Settings').first.windowClose();
+
+}
+
+main();
